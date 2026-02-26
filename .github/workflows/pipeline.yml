@@ -24,12 +24,19 @@ jobs:
       - name: Install Dependencies and Build
         run: mvn install -DskipTests
 
-      - name: Install Playwright Browsers and System Deps
-        # TRICK: Use Maven Exec to pull correct browser version + Linux libraries
+      - name: Install Playwright Browsers and Deps
         run: mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install --with-deps chromium"
 
       - name: Run automated tests
         run: mvn test
+
+      # NEW: This saves the screenshots so you can download them from the GitHub Actions tab
+      - name: Upload Test Screenshots
+        if: always() # Runs even if the tests fail!
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: target/*.png
 
 
 #name: CI Pipeline
