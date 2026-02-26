@@ -11,9 +11,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install Playwright Browsers
-      - run: npx playwright install --with-deps chromium
-
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -27,8 +24,10 @@ jobs:
       - name: Install Dependencies and Build
         run: mvn install -DskipTests
 
-      - name: Install Playwright Browsers
-        run: mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install --with-deps"
+      # This is the "Magic Step" that was failing/redundant
+      # We use the Maven Exec plugin to ensure Playwright and its system deps are installed
+      - name: Install Playwright Browsers and Deps
+        run: mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install --with-deps chromium"
 
       - name: Run automated tests
         run: mvn test
