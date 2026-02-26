@@ -1,75 +1,58 @@
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import org.junit.jupiter.api.Test;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SortingTest {
 
-    // Optional main method (so you can run as Java Application)
     public static void main(String[] args) {
         new SortingTest().validateAllSortingOptions();
     }
 
     @Test
     void validateAllSortingOptions() {
-
         try (Playwright playwright = Playwright.create()) {
-
             boolean isCI = System.getenv("CI") != null;
 
             Browser browser = playwright.chromium().launch(
-                    new BrowserType.LaunchOptions()
-                            .setHeadless(isCI) // headless in CI, headed locally
+                    new BrowserType.LaunchOptions().setHeadless(isCI)
             );
 
+            // We use a context to set a high default for everything
             BrowserContext context = browser.newContext();
-            context.setDefaultTimeout(60000); // 60 seconds default timeout
+            context.setDefaultTimeout(60000);
 
             Page page = context.newPage();
-
-            // Navigate to the site
             page.navigate("https://practicesoftwaretesting.com/");
 
-            // ✅ CI-safe wait: wait for the first product to be visible (up to 90s)
-            Locator firstProduct = page.locator("[data-test='product-name']").first();
-            firstProduct.waitFor(new Locator.WaitForOptions()
-                    .setState(WaitForSelectorState.VISIBLE)
-                    .setTimeout(90000)
-            );
+            // 🛠️ THE FIX: Wait for at least one product card to be attached to the DOM
+            // This is more reliable than '.first().waitFor()' on a slow loading SPA
+            page.waitForSelector("[data-test='product-name']", new Page.WaitForSelectorOptions().setState(WaitForSelectorState.ATTACHED).setTimeout(90000));
 
             System.out.println("--- Starting Comprehensive Sorting Test ---");
 
             List<String> sortValues = Arrays.asList(
-                    "name,asc",
-                    "name,desc",
-                    "price,desc",
-                    "price,asc",
-                    "co2_rating,asc",
-                    "co2_rating,desc"
+                    "name,asc", "name,desc", "price,desc", "price,asc", "co2_rating,asc", "co2_rating,desc"
             );
 
-            // Correct dropdown locator
             Locator sortDropdown = page.locator("select[data-test='sort']");
-            sortDropdown.waitFor(new Locator.WaitForOptions()
-                    .setState(WaitForSelectorState.VISIBLE)
-                    .setTimeout(90000)
-            );
+            sortDropdown.scrollIntoViewIfNeeded();
 
             for (String value : sortValues) {
-
-                // Select sorting option
+                // 🛠️ RE-WAIT logic: Before selecting, ensure the dropdown is ready
+                sortDropdown.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
                 sortDropdown.selectOption(value);
 
-                // Wait for sorting to complete
-                page.waitForSelector("[data-test='sorting_completed']");
+                // Wait for the "Finished" indicator from the app
+                page.waitForSelector("[data-test='sorting_completed']", new Page.WaitForSelectorOptions().setTimeout(60000));
 
-                // Validate ascending price sorting
                 if (value.equals("price,asc")) {
+                    // Small sleep (1s) only in CI to let the UI settle after 'sorting_completed'
+                    if(isCI) page.waitForTimeout(1000);
+
                     List<Double> prices = page.locator("[data-test='product-price']")
                             .allTextContents()
                             .stream()
@@ -77,26 +60,18 @@ public class SortingTest {
                             .collect(Collectors.toList());
 
                     for (int i = 0; i < prices.size() - 1; i++) {
-                        assertTrue(prices.get(i) <= prices.get(i + 1),
-                                "Price sorting failed at index " + i);
+                        assertTrue(prices.get(i) <= prices.get(i + 1), "Price sorting failed at index " + i);
                     }
-
                     System.out.println("Validation Success: Price (asc) is mathematically correct.");
                 }
 
-                // Print first product after sort
-                firstProduct.waitFor(new Locator.WaitForOptions()
-                        .setState(WaitForSelectorState.VISIBLE)
-                        .setTimeout(90000)
-                );
-                System.out.println(
-                        "Sort: [" + value + "] -> First Product: " +
-                                firstProduct.textContent().trim()
-                );
+                // 🛠️ Use a direct locator here instead of the 'firstProduct' variable
+                // to avoid "Stale Element Reference" after a sort re-render
+                String topProductName = page.locator("[data-test='product-name']").first().textContent().trim();
+                System.out.println("Sort: [" + value + "] -> First Product: " + topProductName);
             }
 
             System.out.println("--- All sorting options tested successfully ---");
-
             browser.close();
         }
     }
