@@ -35,8 +35,6 @@ public class SortingTest {
             // ✅ Navigate normally (NO COMMIT)
             page.navigate("https://practicesoftwaretesting.com/");
 
-            // ✅ Wait for SPA to finish network activity
-            page.waitForLoadState(LoadState.NETWORKIDLE);
 
             // ✅ Ensure products are visible before continuing
             page.waitForSelector("[data-test='product-name']");
