@@ -17,8 +17,14 @@ public class SortingTest {
     @Test
     void validateAllSortingOptions() {
         try (Playwright playwright = Playwright.create()) {
+            // This checks if it's running on a CI server.
+     // If it's on GitHub, it runs headless. If it's on your PC, it opens the window.
+            boolean isCI = System.getenv("CI") != null;
+
+            Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
+                    .setHeadless(isCI));
             // Setup - Set headless to true if you want it to run 'invisible' in the background
-            Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
+   //            Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
             Page page = browser.newPage();
             page.navigate("https://practicesoftwaretesting.com/");
 
