@@ -1,5 +1,6 @@
 
 import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.LoadState;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import org.junit.jupiter.api.Test;
 import java.util.Arrays;
@@ -27,6 +28,7 @@ public class SortingTest {
    //            Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
             Page page = browser.newPage();
             page.navigate("https://practicesoftwaretesting.com/");
+            page.waitForLoadState(LoadState.NETWORKIDLE);
 
             // 1. All sorting values from your HTML logic
             List<String> sortValues = Arrays.asList(
@@ -34,7 +36,7 @@ public class SortingTest {
             );
 
             System.out.println("--- Starting Comprehensive Sorting Test ---");
-
+            page.waitForSelector("select[data-test='sort']");
             for (String value : sortValues) {
                 // 2. Select the option
                 page.selectOption("select[data-test='sort']", value);
