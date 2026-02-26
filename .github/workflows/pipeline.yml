@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Install Playwright Browsers
+      - run: npx playwright install --with-deps chromium
+
       - name: Checkout code
         uses: actions/checkout@v4
 
