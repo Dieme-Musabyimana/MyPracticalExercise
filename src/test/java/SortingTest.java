@@ -1,5 +1,5 @@
 import com.microsoft.playwright.*;
-import com.microsoft.playwright.options.LoadState;
+import com.microsoft.playwright.options.WaitForSelectorState;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SortingTest {
 
-    // ✅ Optional main method (so you can run as Java Application)
+    // Optional main method (so you can run as Java Application)
     public static void main(String[] args) {
         new SortingTest().validateAllSortingOptions();
     }
@@ -28,16 +28,19 @@ public class SortingTest {
             );
 
             BrowserContext context = browser.newContext();
-            context.setDefaultTimeout(60000); // 60 seconds for CI stability
+            context.setDefaultTimeout(60000); // 60 seconds default timeout
 
             Page page = context.newPage();
 
-            // ✅ Navigate normally (NO COMMIT)
+            // Navigate to the site
             page.navigate("https://practicesoftwaretesting.com/");
 
-
-            // ✅ Ensure products are visible before continuing
-            page.waitForSelector("[data-test='product-name']");
+            // ✅ CI-safe wait: wait for the first product to be visible (up to 90s)
+            Locator firstProduct = page.locator("[data-test='product-name']").first();
+            firstProduct.waitFor(new Locator.WaitForOptions()
+                    .setState(WaitForSelectorState.VISIBLE)
+                    .setTimeout(90000)
+            );
 
             System.out.println("--- Starting Comprehensive Sorting Test ---");
 
@@ -50,9 +53,12 @@ public class SortingTest {
                     "co2_rating,desc"
             );
 
-            // ✅ Correct dropdown locator
+            // Correct dropdown locator
             Locator sortDropdown = page.locator("select[data-test='sort']");
-            sortDropdown.waitFor();
+            sortDropdown.waitFor(new Locator.WaitForOptions()
+                    .setState(WaitForSelectorState.VISIBLE)
+                    .setTimeout(90000)
+            );
 
             for (String value : sortValues) {
 
@@ -64,7 +70,6 @@ public class SortingTest {
 
                 // Validate ascending price sorting
                 if (value.equals("price,asc")) {
-
                     List<Double> prices = page.locator("[data-test='product-price']")
                             .allTextContents()
                             .stream()
@@ -72,21 +77,21 @@ public class SortingTest {
                             .collect(Collectors.toList());
 
                     for (int i = 0; i < prices.size() - 1; i++) {
-                        assertTrue(
-                                prices.get(i) <= prices.get(i + 1),
-                                "Price sorting failed at index " + i
-                        );
+                        assertTrue(prices.get(i) <= prices.get(i + 1),
+                                "Price sorting failed at index " + i);
                     }
 
                     System.out.println("Validation Success: Price (asc) is mathematically correct.");
                 }
 
-                Locator firstProduct = page.locator("[data-test='product-name']").first();
-                firstProduct.waitFor();
-
+                // Print first product after sort
+                firstProduct.waitFor(new Locator.WaitForOptions()
+                        .setState(WaitForSelectorState.VISIBLE)
+                        .setTimeout(90000)
+                );
                 System.out.println(
-                        "Sort: [" + value + "] -> First Product: "
-                                + firstProduct.textContent().trim()
+                        "Sort: [" + value + "] -> First Product: " +
+                                firstProduct.textContent().trim()
                 );
             }
 
@@ -95,8 +100,7 @@ public class SortingTest {
             browser.close();
         }
     }
-}
-
+}ta
 
 
 
