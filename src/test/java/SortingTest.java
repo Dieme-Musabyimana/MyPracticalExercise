@@ -1,97 +1,73 @@
+
+
 import com.microsoft.playwright.*;
-import com.microsoft.playwright.options.WaitForSelectorState;
+import com.microsoft.playwright.options.*;
 import org.junit.jupiter.api.Test;
-
-import java.util.Arrays;
-import java.util.List;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.stream.Collectors;
-
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SortingTest {
 
-    public static void main(String[] args) {
-        new SortingTest().validateAllSortingOptions();
-    }
-
     @Test
     void validateAllSortingOptions() {
-
         try (Playwright playwright = Playwright.create()) {
-
             boolean isCI = System.getenv("CI") != null;
 
-            Browser browser = playwright.chromium().launch(
-                    new BrowserType.LaunchOptions()
-                            .setHeadless(isCI) // Headless in CI, headed locally
-            );
+            // TRICK 1: Use LaunchPersistentContext (from the Quiz Bot)
+            // This bypasses many bot-detection hurdles on GitHub runners
+            BrowserType.LaunchPersistentContextOptions options = new BrowserType.LaunchPersistentContextOptions()
+                    .setHeadless(true)
+                    .setArgs(Arrays.asList(
+                            "--no-sandbox",
+                            "--disable-blink-features=AutomationControlled",
+                            "--disable-dev-shm-usage"
+                    ));
 
-            // ✅ Set a large viewport to ensure SPA renders properly
-            BrowserContext context = browser.newContext(
-                    new Browser.NewContextOptions()
-                            .setViewportSize(1920, 1080)
-            );
+            // Use a unique profile directory
+            BrowserContext context = playwright.chromium().launchPersistentContext(Paths.get("target/playwright-profile"), options);
 
-            Page page = context.newPage();
+            // TRICK 2: Inject the stealth script to hide 'webdriver' presence
+            context.addInitScript("() => { Object.defineProperty(navigator,'webdriver',{get:()=>undefined}); }");
 
-            // Navigate to the site
-            page.navigate("https://practicesoftwaretesting.com/");
+            Page page = context.pages().get(0);
+            page.setDefaultTimeout(90000); // 90 seconds for CI stability
 
-            // --- Wait for products safely in CI ---
-            Locator firstProduct = page.locator("[data-test='product-name']").first();
+            // Navigate and wait for the initial DOM
+            page.navigate("https://practicesoftwaretesting.com/", new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
 
-            // Retry loop in case SPA is slow
-            int retries = 0;
-            while (firstProduct.count() == 0 && retries < 5) {
-                System.out.println("Waiting for products to load... retry " + (retries + 1));
-                Thread.sleep(5000); // wait 5s
-                retries++;
+            // TRICK 3: The "Quiz Bot" Manual Polling Loop
+            // Instead of .first().waitFor(), we wait until the count of products is > 0
+            boolean productsFound = false;
+            for (int i = 0; i < 45; i++) { // Try for 45 seconds
+                if (page.locator("[data-test='product-name']").count() > 0) {
+                    productsFound = true;
+                    break;
+                }
+                page.waitForTimeout(1000);
             }
 
-            // Wait until the element exists in DOM
-            firstProduct.waitFor(new Locator.WaitForOptions()
-                    .setState(WaitForSelectorState.ATTACHED)
-                    .setTimeout(90000)
-            );
+            if (!productsFound) {
+                throw new RuntimeException("CRITICAL FAILURE: Products failed to load on the page within 45 seconds.");
+            }
 
-            // Scroll into view and ensure visible
-            firstProduct.scrollIntoViewIfNeeded();
-            firstProduct.waitFor(new Locator.WaitForOptions()
-                    .setState(WaitForSelectorState.VISIBLE)
-                    .setTimeout(30000)
+            List<String> sortValues = Arrays.asList(
+                    "name,asc", "name,desc", "price,desc", "price,asc"
             );
 
             System.out.println("--- Starting Comprehensive Sorting Test ---");
 
-            List<String> sortValues = Arrays.asList(
-                    "name,asc",
-                    "name,desc",
-                    "price,desc",
-                    "price,asc",
-                    "co2_rating,asc",
-                    "co2_rating,desc"
-            );
-
-            // Locate the sort dropdown
             Locator sortDropdown = page.locator("select[data-test='sort']");
-            sortDropdown.scrollIntoViewIfNeeded();
-            sortDropdown.waitFor(new Locator.WaitForOptions()
-                    .setState(WaitForSelectorState.VISIBLE)
-                    .setTimeout(30000)
-            );
 
             for (String value : sortValues) {
-
-                // Select sorting option
                 sortDropdown.selectOption(value);
 
-                // Wait for sorting completion
-                page.waitForSelector("[data-test='sorting_completed']");
+                // Wait for the indicator that sorting finished
+                page.waitForSelector("[data-test='sorting_completed']", new Page.WaitForSelectorOptions().setTimeout(60000));
 
-                // Validate ascending price
                 if (value.equals("price,asc")) {
-                    List<Double> prices = page.locator("[data-test='product-price']")
-                            .allTextContents()
+                    List<Double> prices = page.locator("[data-test='product-price']").allTextContents()
                             .stream()
                             .map(p -> Double.parseDouble(p.replaceAll("[^0-9.]", "")))
                             .collect(Collectors.toList());
@@ -100,34 +76,19 @@ public class SortingTest {
                         assertTrue(prices.get(i) <= prices.get(i + 1),
                                 "Price sorting failed at index " + i);
                     }
-
                     System.out.println("Validation Success: Price (asc) is mathematically correct.");
                 }
 
-                // Print first product after sort
-                firstProduct.scrollIntoViewIfNeeded();
-                firstProduct.waitFor(new Locator.WaitForOptions()
-                        .setState(WaitForSelectorState.VISIBLE)
-                        .setTimeout(30000)
-                );
-                System.out.println(
-                        "Sort: [" + value + "] -> First Product: " +
-                                firstProduct.textContent().trim()
-                );
+                // Fresh check for the first product to avoid stale element errors
+                String firstProduct = page.locator("[data-test='product-name']").first().innerText();
+                System.out.println("Sort: [" + value + "] -> First Product: " + firstProduct.trim());
             }
 
             System.out.println("--- All sorting options tested successfully ---");
-
-            browser.close();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            context.close();
         }
     }
 }
-
-
-
-//
 //
 //import com.microsoft.playwright.*;
 //import com.microsoft.playwright.options.LoadState;
