@@ -1,90 +1,103 @@
-
-
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.LoadState;
-import com.microsoft.playwright.options.WaitForSelectorState;
-import com.microsoft.playwright.options.WaitUntilState;
 import org.junit.jupiter.api.Test;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SortingTest {
 
+    // ✅ Optional main method (so you can run as Java Application)
     public static void main(String[] args) {
         new SortingTest().validateAllSortingOptions();
     }
 
     @Test
     void validateAllSortingOptions() {
+
         try (Playwright playwright = Playwright.create()) {
+
             boolean isCI = System.getenv("CI") != null;
 
-            Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
-                    .setHeadless(isCI));
+            Browser browser = playwright.chromium().launch(
+                    new BrowserType.LaunchOptions()
+                            .setHeadless(isCI) // headless in CI, headed locally
+            );
 
             BrowserContext context = browser.newContext();
-            context.setDefaultTimeout(60000); // 60s timeout for slow CI environments
+            context.setDefaultTimeout(60000); // 60 seconds for CI stability
 
             Page page = context.newPage();
 
-            // 1. Navigate and wait for initial server response
-            page.navigate("https://practicesoftwaretesting.com/", new Page.NavigateOptions().setWaitUntil(WaitUntilState.COMMIT));
+            // ✅ Navigate normally (NO COMMIT)
+            page.navigate("https://practicesoftwaretesting.com/");
 
-            // 2. Wait for the products to load - this confirms the API is done
-            try {
-                page.waitForSelector("[data-test='product-name']", new Page.WaitForSelectorOptions().setTimeout(30000));
-            } catch (Exception e) {
-                System.out.println("Products loading slow, continuing...");
-            }
+            // ✅ Wait for SPA to finish network activity
+            page.waitForLoadState(LoadState.NETWORKIDLE);
 
-            List<String> sortValues = Arrays.asList(
-                    "name,asc", "name,desc", "price,desc", "price,asc", "co2_rating,asc", "co2_rating,desc"
-            );
+            // ✅ Ensure products are visible before continuing
+            page.waitForSelector("[data-test='product-name']");
 
             System.out.println("--- Starting Comprehensive Sorting Test ---");
 
-            // 3. Define the dropdown locator once
-            Locator sortDropdown = page.locator("select[data-test='sort']");
+            List<String> sortValues = Arrays.asList(
+                    "name,asc",
+                    "name,desc",
+                    "price,desc",
+                    "price,asc",
+                    "co2_rating,asc",
+                    "co2_rating,desc"
+            );
 
-            // 4. Scroll to it and wait for it to be visible (Crucial for CI!)
-            sortDropdown.scrollIntoViewIfNeeded();
-            sortDropdown.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+            // ✅ Correct dropdown locator
+            Locator sortDropdown = page.locator("select[data-test='sort']");
+            sortDropdown.waitFor();
 
             for (String value : sortValues) {
-                // 5. Select using the locator directly
+
+                // Select sorting option
                 sortDropdown.selectOption(value);
 
+                // Wait for sorting to complete
                 page.waitForSelector("[data-test='sorting_completed']");
 
+                // Validate ascending price sorting
                 if (value.equals("price,asc")) {
-                    List<Double> prices = page.locator("[data-test='product-price']").allTextContents()
+
+                    List<Double> prices = page.locator("[data-test='product-price']")
+                            .allTextContents()
                             .stream()
                             .map(p -> Double.parseDouble(p.replaceAll("[^0-9.]", "")))
                             .collect(Collectors.toList());
 
                     for (int i = 0; i < prices.size() - 1; i++) {
-                        assertTrue(prices.get(i) <= prices.get(i + 1),
-                                "Price sorting failed at index " + i);
+                        assertTrue(
+                                prices.get(i) <= prices.get(i + 1),
+                                "Price sorting failed at index " + i
+                        );
                     }
+
                     System.out.println("Validation Success: Price (asc) is mathematically correct.");
                 }
 
                 Locator firstProduct = page.locator("[data-test='product-name']").first();
-                firstProduct.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
-                System.out.println("Sort: [" + value + "] -> First Product: " + firstProduct.textContent().trim());
+                firstProduct.waitFor();
+
+                System.out.println(
+                        "Sort: [" + value + "] -> First Product: "
+                                + firstProduct.textContent().trim()
+                );
             }
 
             System.out.println("--- All sorting options tested successfully ---");
+
             browser.close();
         }
     }
 }
-
-
-
-
 
 
 
