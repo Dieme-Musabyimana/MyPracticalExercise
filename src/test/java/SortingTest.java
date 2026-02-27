@@ -6,7 +6,7 @@ import java.nio.file.Paths;
 import java.util.*;
 
 public class SortingTest {
-//Start test
+//Start test method
     @Test
     void validateAllSortingOptions() {
         try (Playwright playwright = Playwright.create()) {
