@@ -47,6 +47,7 @@ public class SortingTest {
                 // Wait for the UI to acknowledge the sort is done
                 page.waitForSelector("[data-test='sorting_completed']");
 
+
                 String firstProduct = page.locator("[data-test='product-name']").first().innerText();
                 System.out.println("Validated Sort [" + value + "] - Top Item: " + firstProduct.trim());
             }
