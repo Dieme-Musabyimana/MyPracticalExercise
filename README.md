@@ -23,3 +23,5 @@ git merge main
 git add test.java
 git commit -m "resolve conflict"
 git push origin ft/setup
+
+[//]: # (verify branch protection)
