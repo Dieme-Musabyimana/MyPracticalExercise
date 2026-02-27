@@ -32,7 +32,7 @@ public class SortingTest {
         Locator products = page.locator("[data-test='product-name']");
         products.first().waitFor();
 
-        List<String> sortValues = Arrays.asList("name,asc", "name,desc",  "price,des", "price,asc");
+        List<String> sortValues = Arrays.asList("name,asc", "name,desc", "price,desc", "price,asc");
 
 
         for (String value : sortValues) {
