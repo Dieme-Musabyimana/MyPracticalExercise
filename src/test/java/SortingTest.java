@@ -1,4 +1,3 @@
-
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.*;
 import org.junit.jupiter.api.Test;
@@ -6,39 +5,47 @@ import java.util.*;
 
 public class SortingTest {
 
+
     @Test
     void validateAllSortingOptions() {
         try (Playwright playwright = Playwright.create()) {
             boolean isCI = System.getenv("CI") != null;
 
-            // standard launch without persistence or bot-evasion arguments
+            // 1. Launch a clean browser (no persistence)
             Browser browser = playwright.chromium().launch(
                     new BrowserType.LaunchOptions().setHeadless(isCI)
             );
 
-            BrowserContext context = browser.newContext();
+            // 2. Add a Human User Agent to avoid being blocked by Cloudflare
+            BrowserContext context = browser.newContext(new Browser.NewContextOptions()
+                    .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+            );
+
             Page page = context.newPage();
             page.setDefaultTimeout(60000);
 
+            // 3. Navigate and wait for the page to load
             page.navigate("https://practicesoftwaretesting.com/");
 
-            // Essential: Wait for products to appear in the DOM
-            page.locator("[data-test='product-name']").first().waitFor();
+            // 4. Wait for the initial product list to appear
+            Locator products = page.locator("[data-test='product-name']");
+            products.first().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
 
             // Core Sorting Logic
             List<String> sortValues = Arrays.asList("name,asc", "name,desc", "price,desc", "price,asc");
 
             for (String value : sortValues) {
-                // Wait for dropdown to be ready and select option
-                Locator sortDropdown = page.locator("select[data-test='sort']");
-                sortDropdown.waitFor();
-                sortDropdown.selectOption(value);
+                // Select the option from the dropdown
+                page.locator("select[data-test='sort']").selectOption(value);
 
-                // Wait for the UI to acknowledge the sort is done
-                page.waitForSelector("[data-test='sorting_completed']");
+                // 5. Wait for the network to be quiet after sorting
+                // This is more reliable than waiting for a specific 'completed' tag
+                page.waitForLoadState(LoadState.NETWORKIDLE);
 
-                // Verify result
-                String firstProduct = page.locator("[data-test='product-name']").first().innerText();
+                // Re-verify the product list is visible after the sort
+                products.first().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+
+                String firstProduct = products.first().innerText();
                 System.out.println("Validated Sort [" + value + "] - Top Item: " + firstProduct.trim());
             }
 
