@@ -1,12 +1,10 @@
 # CI Pipeline for Dieme-Musabyimana.MyPracticalExercise
 name: $(TeamProject)_$(Build.DefinitionName)_$(Date:yyyyMMdd)$(Rev:.r)
 
-# Trigger on main and feature branch
 trigger:
 - ft/pipeline
 - main
 
-# Use default agent pool
 pool:
   name: 'Default'
 
@@ -20,8 +18,6 @@ steps:
   displayName: 'Step 1: Set up JDK 17'
 
 # Step 2: Install dependencies & build
-# - script: mvn install -DskipTests
-#   displayName: 'Step 2: Install Dependencies & Build'
 - task: Maven@4
   inputs:
     mavenPomFile: 'pom.xml'
@@ -32,7 +28,14 @@ steps:
   displayName: 'Step 2: Install Dependencies & Build'
 
 # Step 3: Install Playwright browsers
-- script: mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install --with-deps chromium"
+- task: Maven@4
+  inputs:
+    mavenPomFile: 'pom.xml'
+    goals: 'exec:java'
+    options: '-D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install --with-deps chromium"'
+    mavenVersionOption: 'Default'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '17'
   displayName: 'Step 3: Install Playwright Browsers'
 
 # Step 4: Run automated BDD tests
@@ -42,6 +45,9 @@ steps:
     goals: 'test'
     publishJUnitResults: true
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    mavenVersionOption: 'Default'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '17'
   displayName: 'Step 4: Run Automated BDD Tests'
 
 # Step 5: Upload build artifacts (screenshots)
