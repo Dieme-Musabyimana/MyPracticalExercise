@@ -11,7 +11,8 @@ trigger:
 # GITHUB: 'runs-on: ubuntu-latest'
 # AZURE: 'pool:'
 pool:
-  vmImage: 'ubuntu-latest'
+  # vmImage: 'ubuntu-latest'
+  name: 'Default'
 
 steps:
 # GITHUB: 'uses: actions/setup-java@v4'
