@@ -1,15 +1,17 @@
 # CI Pipeline for Dieme-Musabyimana.MyPracticalExercise
 name: $(TeamProject)_$(Build.DefinitionName)_$(Date:yyyyMMdd)$(Rev:.r)
 
+# Trigger on main and feature branch
 trigger:
 - ft/pipeline
 - main
 
+# Use default agent pool
 pool:
   name: 'Default'
 
 steps:
-# Step 1: Set up JDK 17
+# Step 1: Set up JDK 17 (pre-installed on the agent)
 - task: JavaToolInstaller@0
   inputs:
     versionSpec: '17'
@@ -17,12 +19,13 @@ steps:
     jdkSourceOption: 'PreInstalled'
   displayName: 'Step 1: Set up JDK 17'
 
-# Step 2: Install dependencies & build
+# Step 2: Install dependencies & build using Maven capability path
 - task: Maven@4
   inputs:
     mavenPomFile: 'pom.xml'
     goals: 'install -DskipTests'
-    mavenVersionOption: 'Default'
+    mavenVersionOption: 'Path'          # Use the path you defined in agent capabilities
+    mavenPath: 'C:\Program Files\Apache\Maven'
     javaHomeOption: 'JDKVersion'
     jdkVersionOption: '17'
   displayName: 'Step 2: Install Dependencies & Build'
@@ -31,9 +34,9 @@ steps:
 - task: Maven@4
   inputs:
     mavenPomFile: 'pom.xml'
-    goals: 'exec:java'
-    options: '-D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install --with-deps chromium"'
-    mavenVersionOption: 'Default'
+    goals: 'exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install --with-deps chromium"'
+    mavenVersionOption: 'Path'
+    mavenPath: 'C:\Program Files\Apache\Maven'
     javaHomeOption: 'JDKVersion'
     jdkVersionOption: '17'
   displayName: 'Step 3: Install Playwright Browsers'
@@ -45,7 +48,8 @@ steps:
     goals: 'test'
     publishJUnitResults: true
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
-    mavenVersionOption: 'Default'
+    mavenVersionOption: 'Path'
+    mavenPath: 'C:\Program Files\Apache\Maven'
     javaHomeOption: 'JDKVersion'
     jdkVersionOption: '17'
   displayName: 'Step 4: Run Automated BDD Tests'
@@ -58,8 +62,6 @@ steps:
     ArtifactName: 'playwright-screenshots'
     publishLocation: 'Container'
   displayName: 'Step 5: Upload Screenshots'
-
-
 
 
 # # GITHUB: 'name: CI Pipeline' 
