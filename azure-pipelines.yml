@@ -20,7 +20,15 @@ steps:
   displayName: 'Step 1: Set up JDK 17'
 
 # Step 2: Install dependencies & build
-- script: mvn install -DskipTests
+# - script: mvn install -DskipTests
+#   displayName: 'Step 2: Install Dependencies & Build'
+- task: Maven@4
+  inputs:
+    mavenPomFile: 'pom.xml'
+    goals: 'install -DskipTests'
+    mavenVersionOption: 'Default'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '17'
   displayName: 'Step 2: Install Dependencies & Build'
 
 # Step 3: Install Playwright browsers
