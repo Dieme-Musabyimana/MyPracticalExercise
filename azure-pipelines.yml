@@ -112,12 +112,12 @@ steps:
 
 # GITHUB: 'uses: actions/upload-artifact@v4'
 # AZURE: 'task: PublishBuildArtifacts@1'
-- task: PublishBuildArtifacts@1
-  # GITHUB: 'if: always()'
-  # AZURE: 'condition: always()'
-  condition: always()
-  inputs:
-    PathtoPublish: '$(System.DefaultWorkingDirectory)/target'
-    ArtifactName: 'playwright-screenshots'
-    publishLocation: 'Container'
-  displayName: 'Step 5: Upload Screenshots'
+# - task: PublishBuildArtifacts@1
+#   # GITHUB: 'if: always()'
+#   # AZURE: 'condition: always()'
+#   condition: always()
+#   inputs:
+#     PathtoPublish: '$(System.DefaultWorkingDirectory)/target'
+#     ArtifactName: 'playwright-screenshots'
+#     publishLocation: 'Container'
+#   displayName: 'Step 5: Upload Screenshots'
