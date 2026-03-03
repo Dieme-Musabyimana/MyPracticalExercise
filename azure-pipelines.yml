@@ -1,0 +1,123 @@
+# # CI Pipeline for Dieme-Musabyimana.MyPracticalExercise
+# name: $(TeamProject)_$(Build.DefinitionName)_$(Date:yyyyMMdd)$(Rev:.r)
+
+# # Trigger on main and feature branch
+# trigger:
+# - ft/pipeline
+# - main
+
+# # Use default agent pool
+# pool:
+#   name: 'Default'
+
+# steps:
+# # Step 1: Set up JDK 17 (pre-installed on the agent)
+# - task: JavaToolInstaller@0
+#   inputs:
+#     versionSpec: '17'
+#     jdkArchitectureOption: 'x64'
+#     jdkSourceOption: 'PreInstalled'
+#   displayName: 'Step 1: Set up JDK 17'
+
+# # Step 2: Install dependencies & build using Maven capability path
+# - task: Maven@4
+#   inputs:
+#     mavenPomFile: 'pom.xml'
+#     goals: 'install -DskipTests'
+#     mavenVersionOption: 'Path'          # Use the path you defined in agent capabilities
+#     mavenPath: 'C:\Program Files\Apache\Maven'
+#     javaHomeOption: 'JDKVersion'
+#     jdkVersionOption: '17'
+#   displayName: 'Step 2: Install Dependencies & Build'
+
+# # Step 3: Install Playwright browsers
+# - task: Maven@4
+#   inputs:
+#     mavenPomFile: 'pom.xml'
+#     goals: 'exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install --with-deps chromium"'
+#     mavenVersionOption: 'Path'
+#     mavenPath: 'C:\Program Files\Apache\Maven'
+#     javaHomeOption: 'JDKVersion'
+#     jdkVersionOption: '17'
+#   displayName: 'Step 3: Install Playwright Browsers'
+
+# # Step 4: Run automated BDD tests
+# - task: Maven@4
+#   inputs:
+#     mavenPomFile: 'pom.xml'
+#     goals: 'test'
+#     publishJUnitResults: true
+#     testResultsFiles: '**/surefire-reports/TEST-*.xml'
+#     mavenVersionOption: 'Path'
+#     mavenPath: 'C:\Program Files\Apache\Maven'
+#     javaHomeOption: 'JDKVersion'
+#     jdkVersionOption: '17'
+#   displayName: 'Step 4: Run Automated BDD Tests'
+
+# # Step 5: Upload build artifacts (screenshots)
+# - task: PublishBuildArtifacts@1
+#   condition: always()
+#   inputs:
+#     PathtoPublish: '$(System.DefaultWorkingDirectory)/target'
+#     ArtifactName: 'playwright-screenshots'
+#     publishLocation: 'Container'
+#   displayName: 'Step 5: Upload Screenshots'
+
+
+# GITHUB: 'name: CI Pipeline' 
+# AZURE: This is handled in the Pipeline UI, but you can use 'name:' for the build numbering format.
+name: $(TeamProject)_$(Build.DefinitionName)_$(Date:yyyyMMdd)$(Rev:.r)
+
+# GITHUB: 'on: push: branches: [ main ]'
+# AZURE: 'trigger:'
+trigger:
+- ft/pipeline
+- main
+
+# GITHUB: 'runs-on: ubuntu-latest'
+# AZURE: 'pool:'
+pool:
+  # vmImage: 'ubuntu-latest'
+  name: 'Default'
+
+steps:
+# GITHUB: 'uses: actions/setup-java@v4'
+# AZURE: 'task: JavaToolInstaller@0'
+- task: JavaToolInstaller@0
+  inputs:
+    versionSpec: '17'
+    jdkArchitectureOption: 'x64'
+    jdkSourceOption: 'PreInstalled'
+  displayName: 'Step 1: Set up JDK 17'
+
+# GITHUB: 'run: mvn install -DskipTests'
+# AZURE: 'script:' (or 'task: Maven@4')
+- script: mvn install -DskipTests
+  displayName: 'Step 2: Install Dependencies & Build'
+
+# GITHUB: 'run: mvn exec:java ... install --with-deps chromium'
+# AZURE: 'script:' (Plain command line works the same in both!)
+- script: mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install --with-deps chromium"
+  displayName: 'Step 3: Install Playwright Browsers'
+
+# GITHUB: 'run: mvn test'
+# AZURE: 'task: Maven@4' (We use a Task here because it creates better reports than a simple 'script')
+- task: Maven@4
+  inputs:
+    mavenPomFile: 'pom.xml'
+    goals: 'test'
+    publishJUnitResults: true           # This replaces the need for a separate "Upload Results" action
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+  displayName: 'Step 4: Run Automated BDD Tests'
+
+# GITHUB: 'uses: actions/upload-artifact@v4'
+# AZURE: 'task: PublishBuildArtifacts@1'
+# - task: PublishBuildArtifacts@1
+#   # GITHUB: 'if: always()'
+#   # AZURE: 'condition: always()'
+#   condition: always()
+#   inputs:
+#     PathtoPublish: '$(System.DefaultWorkingDirectory)/target'
+#     ArtifactName: 'playwright-screenshots'
+#     publishLocation: 'Container'
+#   displayName: 'Step 5: Upload Screenshots'
